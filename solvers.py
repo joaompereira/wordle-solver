@@ -1,8 +1,44 @@
 import numpy as np
 from time import time
 import itertools as itt
-from main import word_checker_inner, remove_accents
 from compiler_options import compiler_decorator, prange
+
+def word_checker(test_word, true_word):
+    test_word = remove_accents(np.array((test_word,))).view(np.int32)
+    true_word = remove_accents(np.array((true_word,))).view(np.int32)
+    return word_checker_inner(test_word, true_word)
+
+@compiler_decorator()
+def word_checker_inner(test_word, true_word):
+
+    test_checked = test_word == true_word
+    test = 2*test_checked
+
+    true_checked = test_checked.copy()
+
+    for i in range(5):
+        if not test_checked[i]:
+           for j in range(5):
+               if not true_checked[j] and test_word[i]==true_word[j]:
+                   test[i] = 1
+                   true_checked[j] = True
+
+    return test
+
+class KeyDict(dict):
+    def __missing__(self, key):
+        return key
+
+
+def remove_accents(words):
+    accent_dictionary = KeyDict(
+        á='a', â='a', ã='a', ç='c', è='e', é='e',
+        ê='e', í='i', ï='i', ó='o', ô='o', õ='o',
+        ú='u', û='u', ü='u'
+    )
+    letters, indices = np.unique(words.view('U1'), return_inverse=True)
+    letters_na = np.array([accent_dictionary[k] for k in letters])
+    return letters_na[indices].view('U5')
 
 class WordleSolver():
     def __init__(self, words, n_bestwords):
